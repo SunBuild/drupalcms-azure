@@ -219,6 +219,12 @@ abstract class Tasks {
         $connectstr_dbusername = preg_replace("/^.*User Id=(.+?);.*$/", "\\1", $value);
         $connectstr_dbpassword = preg_replace("/^.*Password=(.+?)$/", "\\1", $value);
     }
+    //Port for MYSQL in-app or ClearDB 
+    $connectstr_port = getenv('WEBSITE_MYSQL_PORT');
+    if (empty($connectstr_port))
+    {
+      $connectstr_port= 3306;
+    }
 
     $form['database'] = array(
       '#type' => 'textfield',
@@ -281,11 +287,11 @@ abstract class Tasks {
       '#maxlength' => 255,
       '#required' => TRUE,
     );
-
+  
     $form['advanced_options']['port'] = array(
       '#type' => 'number',
       '#title' => t('Port number'),
-      '#default_value' => getenv('WEBSITE_MYSQL_PORT'),
+      '#default_value' => $connectstr_port,
       '#min' => 0,
       '#max' => 65535,
     );
