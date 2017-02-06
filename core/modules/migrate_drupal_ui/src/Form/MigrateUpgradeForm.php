@@ -9,7 +9,7 @@ use Drupal\Core\Render\RendererInterface;
 use Drupal\Core\State\StateInterface;
 use Drupal\Core\Url;
 use Drupal\migrate\Plugin\MigrationPluginManagerInterface;
-use Drupal\migrate_drupal_ui\MigrateUpgradeRunBatch;
+use Drupal\migrate_drupal_ui\Batch\MigrateUpgradeImportBatch;
 use Drupal\migrate_drupal\MigrationConfigurationTrait;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
@@ -250,6 +250,10 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'source_module' => 'filter',
       'destination_module' => 'filter',
     ],
+    'd7_filter_settings' => [
+      'source_module' => 'filter',
+      'destination_module' => 'filter',
+    ],
     'd6_forum_settings' => [
       'source_module' => 'forum',
       'destination_module' => 'forum',
@@ -257,6 +261,10 @@ class MigrateUpgradeForm extends ConfirmFormBase {
     'd7_forum_settings' => [
       'source_module' => 'forum',
       'destination_module' => 'forum',
+    ],
+    'd7_global_theme_settings' => [
+      'source_module' => 'system',
+      'destination_module' => 'system',
     ],
     'd6_imagecache_presets' => [
       'source_module' => 'imagecache',
@@ -278,7 +286,19 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'source_module' => 'locale',
       'destination_module' => 'language',
     ],
+    'd6_language_negotiation_settings' => [
+      'source_module' => 'locale',
+      'destination_module' => 'language',
+    ],
     'd7_language_negotiation_settings' => [
+      'source_module' => 'locale',
+      'destination_module' => 'language',
+    ],
+    'language_prefixes_and_domains' => [
+      'source_module' => 'locale',
+      'destination_module' => 'language',
+    ],
+    'd6_language_types' => [
       'source_module' => 'locale',
       'destination_module' => 'language',
     ],
@@ -286,11 +306,15 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'source_module' => 'locale',
       'destination_module' => 'language',
     ],
+    'd7_language_types' => [
+      'source_module' => 'locale',
+      'destination_module' => 'language',
+    ],
     'locale_settings' => [
       'source_module' => 'locale',
       'destination_module' => 'locale',
     ],
-    'menu_links' => [
+    'd6_menu_links' => [
       'source_module' => 'menu',
       'destination_module' => 'menu_link_content',
     ],
@@ -298,13 +322,17 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'source_module' => 'menu',
       'destination_module' => 'menu_ui',
     ],
+    'd7_menu_links' => [
+      'source_module' => 'menu',
+      'destination_module' => 'menu_link_content',
+    ],
     'd6_node' => [
       'source_module' => 'node',
       'destination_module' => 'node',
     ],
     'd6_node_translation' => [
-      'source_module' => 'node',
-      'destination_module' => 'node',
+      'source_module' => 'translation',
+      'destination_module' => 'content_translation',
     ],
     'd6_node_revision' => [
       'source_module' => 'node',
@@ -474,7 +502,11 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'source_module' => 'system',
       'destination_module' => 'system',
     ],
-    'menu' => [
+    'd6_menu' => [
+      'source_module' => 'menu',
+      'destination_module' => 'system',
+    ],
+    'd7_menu' => [
       'source_module' => 'menu',
       'destination_module' => 'system',
     ],
@@ -690,7 +722,7 @@ class MigrateUpgradeForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state) {
-    $step = $form_state->getValue('step', 'overview');
+    $step = $form_state->get('step') ?: 'overview';
     switch ($step) {
       case 'overview':
         return $this->buildOverviewForm($form, $form_state);
@@ -736,7 +768,7 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       $form['upgrade_option_item'] = [
         '#type' => 'item',
         '#prefix' => $this->t('An upgrade has already been performed on this site. To perform a new migration, create a clean and empty new install of Drupal 8. Rollbacks and incremental migrations are not yet supported through the user interface. For more information, see the <a href=":url">upgrading handbook</a>.', [':url' => 'https://www.drupal.org/upgrade/migrate']),
-        '#description' => $this->t('<p>Last upgrade: @date</p>', ['@date' => $this->dateFormatter->format($date_performed)]),
+        '#description' => $this->t('Last upgrade: @date', ['@date' => $this->dateFormatter->format($date_performed)]),
       ];
       return $form;
     }
@@ -788,7 +820,7 @@ class MigrateUpgradeForm extends ConfirmFormBase {
    *   The current state of the form.
    */
   public function submitOverviewForm(array &$form, FormStateInterface $form_state) {
-    $form_state->setValue('step', 'credentials');
+    $form_state->set('step', 'credentials');
     $form_state->setRebuild();
   }
 
@@ -953,16 +985,10 @@ class MigrateUpgradeForm extends ConfirmFormBase {
     }
     catch (\Exception $e) {
       $error_message = [
-        '#type' => 'inline_template',
-        '#template' => '{% trans %}Resolve the issue below to continue the upgrade.{% endtrans%}{{ errors }}',
-        '#context' => [
-          'errors' => [
-            '#theme' => 'item_list',
-            '#items' => [$e->getMessage()],
-          ],
-        ],
+        '#title' => $this->t('Resolve the issue below to continue the upgrade.'),
+        '#theme' => 'item_list',
+        '#items' => [$e->getMessage()],
       ];
-
       $form_state->setErrorByName($database['driver'] . '][0', $this->renderer->renderPlain($error_message));
     }
   }
@@ -977,7 +1003,7 @@ class MigrateUpgradeForm extends ConfirmFormBase {
    */
   public function submitCredentialForm(array &$form, FormStateInterface $form_state) {
     // Indicate the next step is confirmation.
-    $form_state->setValue('step', 'confirm');
+    $form_state->set('step', 'confirm');
     $form_state->setRebuild();
   }
 
@@ -1075,8 +1101,12 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       ];
     }
     $form['counts'] = [
-      '#type' => 'item',
-      '#title' => '<ul><li>' . $this->t('@count available upgrade paths', ['@count' => $available_count]) . '</li><li>' . $this->t('@count missing upgrade paths', ['@count' => $missing_count]) . '</li></ul>',
+      '#title' => 'Upgrade analysis report',
+      '#theme' => 'item_list',
+      '#items' => [
+        $this->formatPlural($available_count, '@count available upgrade path', '@count available upgrade paths'),
+        $this->formatPlural($missing_count, '@count missing upgrade path', '@count missing upgrade paths'),
+      ],
       '#weight' => -15,
     ];
 
@@ -1101,13 +1131,12 @@ class MigrateUpgradeForm extends ConfirmFormBase {
       'progress_message' => '',
       'operations' => [
         [
-          [MigrateUpgradeRunBatch::class, 'run'],
-          [array_keys($migrations), 'import', $config],
+          [MigrateUpgradeImportBatch::class, 'run'],
+          [array_keys($migrations), $config],
         ],
       ],
       'finished' => [
-        MigrateUpgradeRunBatch::class,
-        'finished',
+        MigrateUpgradeImportBatch::class, 'finished',
       ],
     ];
     batch_set($batch);
@@ -1145,7 +1174,9 @@ class MigrateUpgradeForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getDescription() {
-    return $this->t('<p><strong>Upgrade analysis report</strong></p>');
+    // The description is added by the buildConfirmForm() method.
+    // @see \Drupal\migrate_drupal_ui\Form\MigrateUpgradeForm::buildConfirmForm()
+    return;
   }
 
   /**

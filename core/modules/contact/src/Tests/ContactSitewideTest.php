@@ -27,7 +27,7 @@ class ContactSitewideTest extends WebTestBase {
    *
    * @var array
    */
-  public static $modules = array('text', 'contact', 'field_ui', 'contact_test', 'block');
+  public static $modules = ['text', 'contact', 'field_ui', 'contact_test', 'block', 'error_service_test', 'dblog'];
 
   /**
    * {@inheritdoc}
@@ -44,13 +44,14 @@ class ContactSitewideTest extends WebTestBase {
    */
   function testSiteWideContact() {
     // Create and log in administrative user.
-    $admin_user = $this->drupalCreateUser(array(
+    $admin_user = $this->drupalCreateUser([
       'access site-wide contact form',
       'administer contact forms',
       'administer users',
       'administer account settings',
       'administer contact_message fields',
-    ));
+      'administer contact_message form display',
+    ]);
     $this->drupalLogin($admin_user);
 
     // Check the presence of expected cache tags.
@@ -283,6 +284,10 @@ class ContactSitewideTest extends WebTestBase {
     $this->fieldUIAddNewField(NULL, $field_name, $field_label, 'text');
     $field_name = 'field_' . $field_name;
 
+    // Check preview field can be ordered.
+    $this->drupalGet('admin/structure/contact/manage/' . $contact_form . '/form-display');
+    $this->assertText(t('Preview'));
+
     // Check that the field is displayed.
     $this->drupalGet('contact/' . $contact_form);
     $this->assertText($field_label);
@@ -346,7 +351,13 @@ class ContactSitewideTest extends WebTestBase {
    */
   function testAutoReply() {
     // Create and log in administrative user.
-    $admin_user = $this->drupalCreateUser(array('access site-wide contact form', 'administer contact forms', 'administer permissions', 'administer users'));
+    $admin_user = $this->drupalCreateUser([
+      'access site-wide contact form',
+      'administer contact forms',
+      'administer permissions',
+      'administer users',
+      'access site reports'
+    ]);
     $this->drupalLogin($admin_user);
 
     // Set up three forms, 2 with an auto-reply and one without.
@@ -384,6 +395,20 @@ class ContactSitewideTest extends WebTestBase {
     $this->submitContact($this->randomMachineName(16), $email, $this->randomString(64), 'no_autoreply', $this->randomString(128));
     $captured_emails = $this->drupalGetMails(array('id' => 'contact_page_autoreply', 'to' => $email));
     $this->assertEqual(count($captured_emails), 0);
+
+    // Verify that the current error message doesn't show, that the auto-reply
+    // doesn't get sent and the correct silent error gets logged.
+    $email = '';
+    entity_get_form_display('contact_message', 'foo', 'default')
+      ->removeComponent('mail')
+      ->save();
+    $this->submitContact($this->randomMachineName(16), $email, $this->randomString(64), 'foo', $this->randomString(128));
+    $this->assertNoText('Unable to send email. Contact the site administrator if the problem persists.');
+    $captured_emails = $this->drupalGetMails(['id' => 'contact_page_autoreply', 'to' => $email]);
+    $this->assertEqual(count($captured_emails), 0);
+    $this->drupalLogin($admin_user);
+    $this->drupalGet('admin/reports/dblog');
+    $this->assertRaw('Error sending auto-reply, missing sender e-mail address in foo');
   }
 
   /**
