@@ -240,7 +240,10 @@ abstract class TestBase {
   /**
    * The temporary file directory for the test environment.
    *
-   * This is set in TestBase::prepareEnvironment().
+   * This is set in TestBase::prepareEnvironment(). This value has to match the
+   * temporary directory created in install_base_system() for test installs.
+   *
+   * @see install_base_system()
    *
    * @var string
    */
@@ -1532,7 +1535,11 @@ abstract class TestBase {
    * need to get deleted too.
    */
   public static function filePreDeleteCallback($path) {
-    chmod($path, 0700);
+    // When the webserver runs with the same system user as the test runner, we
+    // can make read-only files writable again. If not, chmod will fail while
+    // the file deletion still works if file permissions have been configured
+    // correctly. Thus, we ignore any problems while running chmod.
+    @chmod($path, 0700);
   }
 
   /**

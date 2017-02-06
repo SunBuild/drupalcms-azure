@@ -43,12 +43,14 @@ class ModerationStateFieldItemList extends EntityReferenceFieldItemList {
           ->loadRevision($revision_to_load);
 
         // Return the correct translation.
-        $langcode = $entity->language()->getId();
-        if (!$content_moderation_state->hasTranslation($langcode)) {
-          $content_moderation_state->addTranslation($langcode);
-        }
-        if ($content_moderation_state->language()->getId() !== $langcode) {
-          $content_moderation_state = $content_moderation_state->getTranslation($langcode);
+        if ($entity->getEntityType()->hasKey('langcode')) {
+          $langcode = $entity->language()->getId();
+          if (!$content_moderation_state->hasTranslation($langcode)) {
+            $content_moderation_state->addTranslation($langcode);
+          }
+          if ($content_moderation_state->language()->getId() !== $langcode) {
+            $content_moderation_state = $content_moderation_state->getTranslation($langcode);
+          }
         }
 
         return $content_moderation_state->get('moderation_state')->entity;
@@ -57,8 +59,9 @@ class ModerationStateFieldItemList extends EntityReferenceFieldItemList {
     // It is possible that the bundle does not exist at this point. For example,
     // the node type form creates a fake Node entity to get default values.
     // @see \Drupal\node\NodeTypeForm::form()
-    $bundle_entity = \Drupal::service('content_moderation.moderation_information')
-      ->loadBundleEntity($entity->getEntityType()->getBundleEntityType(), $entity->bundle());
+    $bundle_entity = \Drupal::entityTypeManager()
+      ->getStorage($entity->getEntityType()->getBundleEntityType())
+      ->load($entity->bundle());
     if ($bundle_entity && ($default = $bundle_entity->getThirdPartySetting('content_moderation', 'default_moderation_state'))) {
       return ModerationState::load($default);
     }
@@ -71,7 +74,24 @@ class ModerationStateFieldItemList extends EntityReferenceFieldItemList {
     if ($index !== 0) {
       throw new \InvalidArgumentException('An entity can not have multiple moderation states at the same time.');
     }
+    $this->computeModerationFieldItemList();
+    return isset($this->list[$index]) ? $this->list[$index] : NULL;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getIterator() {
+    $this->computeModerationFieldItemList();
+    return parent::getIterator();
+  }
+
+  /**
+   * Recalculate the moderation field item list.
+   */
+  protected function computeModerationFieldItemList() {
     // Compute the value of the moderation state.
+    $index = 0;
     if (!isset($this->list[$index]) || $this->list[$index]->isEmpty()) {
       $moderation_state = $this->getModerationState();
       // Do not store NULL values in the static cache.
@@ -79,8 +99,6 @@ class ModerationStateFieldItemList extends EntityReferenceFieldItemList {
         $this->list[$index] = $this->createItem($index, ['entity' => $moderation_state]);
       }
     }
-
-    return isset($this->list[$index]) ? $this->list[$index] : NULL;
   }
 
 }

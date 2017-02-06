@@ -52,10 +52,13 @@ class OffCanvasTest extends OutsideInJavascriptTestBase {
         $tray_text = $offcanvas_tray->findById('drupal-offcanvas')->getText();
         $this->assertEquals("Thing $link_index says hello", $tray_text);
 
-        // Check no title behavior.
         if ($link_index == '2') {
+          // Check no title behavior.
           $web_assert->elementExists('css', '.ui-dialog-empty-title');
           $this->assertEquals('', $header_text);
+
+          $style = $page->find('css', '.ui-dialog-offcanvas')->getAttribute('style');
+          self::assertTrue(strstr($style, 'width: 555px;') !== FALSE, 'Dialog width respected.');
         }
         else {
           // Check that header is correct.
@@ -63,6 +66,40 @@ class OffCanvasTest extends OutsideInJavascriptTestBase {
           $web_assert->elementNotExists('css', '.ui-dialog-empty-title');
         }
       }
+    }
+  }
+
+  /**
+   * Tests the body displacement behaves differently at a narrow width.
+   */
+  public function testNarrowWidth() {
+    $themes = ['stark', 'bartik'];
+    $narrow_width_breakpoint = 768;
+    $offset = 20;
+    $height = 800;
+    $page = $this->getSession()->getPage();
+    $web_assert = $this->assertSession();
+
+    // Test the same functionality on multiple themes.
+    foreach ($themes as $theme) {
+      $this->enableTheme($theme);
+      // Testing at the wider width.
+      $this->getSession()->resizeWindow($narrow_width_breakpoint + $offset, $height);
+      $this->drupalGet('/offcanvas-test-links');
+      $this->assertFalse($page->find('css', '.dialog-offcanvas__main-canvas')->hasAttribute('style'), 'Body not padded on wide page load.');
+      $page->clickLink("Click Me 1!");
+      $this->waitForOffCanvasToOpen();
+      // Check that the main canvas is padded when page is not narrow width and
+      // tray is open.
+      $web_assert->elementAttributeContains('css', '.dialog-offcanvas__main-canvas', 'style', 'padding-right');
+
+      // Testing at the narrower width.
+      $this->getSession()->resizeWindow($narrow_width_breakpoint - $offset, $height);
+      $this->drupalGet('/offcanvas-test-links');
+      $this->assertFalse($page->find('css', '.dialog-offcanvas__main-canvas')->hasAttribute('style'), 'Body not padded on narrow page load.');
+      $page->clickLink("Click Me 1!");
+      $this->waitForOffCanvasToOpen();
+      $this->assertFalse($page->find('css', '.dialog-offcanvas__main-canvas')->hasAttribute('style'), 'Body not padded on narrow page with tray open.');
     }
   }
 
