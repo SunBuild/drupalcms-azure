@@ -221,6 +221,8 @@ foreach ($_SERVER as $key => $value) {
     $connectstr_dbusername = preg_replace("/^.*User Id=(.+?);.*$/", "\\1", $value);
     $connectstr_dbpassword = preg_replace("/^.*Password=(.+?)$/", "\\1", $value);
    }
+   
+   
 }
 else
 {
@@ -228,14 +230,22 @@ else
     $connectstr_dbname = getenv('DATABASE_NAME');;
     $connectstr_dbusername = getenv('DATABASE_USERNAME');;
     $connectstr_dbpassword = getenv('DATABASE_PASSWORD');
+
 }
 
-    //Port for MYSQL in-app or ClearDB 
+//Port for MYSQL in-app or ClearDB 
     $connectstr_port = getenv('WEBSITE_MYSQL_PORT');
-    if (empty($connectstr_port))
+    $dbdriver = getenv('DATABASE_TYPE');
+  
+    if (empty($connectstr_port) && empty($dbdriver))
     {
       $connectstr_port= 3306;
     }
+else {
+     $connectstr_port= 5432;
+}
+
+  
 
     $form['database'] = array(
       '#type' => 'textfield',
