@@ -64,13 +64,24 @@ class ViewEditTest extends UITestBase {
     $this->assertIdentical($displays['test_1']['id'], 'test_1', 'New display ID matches the display ID key.');
     $this->assertFalse(array_key_exists('attachment_1', $displays), 'Old display ID not found.');
 
+    // Set to the same machine name and save the View.
+    $edit = ['display_id' => 'test_1'];
+    $this->drupalPostForm('admin/structure/views/nojs/display/test_view/test_1/display_id', $edit, 'Apply');
+    $this->drupalPostForm(NULL, [], 'Save');
+    $this->assertLink(t('test_1'));
+
     // Test the form validation with invalid IDs.
     $machine_name_edit_url = 'admin/structure/views/nojs/display/test_view/test_1/display_id';
     $error_text = t('Display name must be letters, numbers, or underscores only.');
 
     // Test that potential invalid display ID requests are detected
-    $this->drupalGet('admin/structure/views/ajax/handler/test_view/fake_display_name/filter/title');
-    $this->assertText('Invalid display id fake_display_name');
+    try {
+      $this->drupalGet('admin/structure/views/ajax/handler/test_view/fake_display_name/filter/title');
+      $this->fail('Expected error, when setDisplay() called with invalid display ID');
+    }
+    catch (\Exception $e) {
+      $this->assertEqual('setDisplay() called with invalid display ID "fake_display_name".', $e->getMessage());
+    }
 
     $edit = ['display_id' => 'test 1'];
     $this->drupalPostForm($machine_name_edit_url, $edit, 'Apply');
@@ -231,6 +242,18 @@ class ViewEditTest extends UITestBase {
     // Apply changes.
     $edit = [];
     $this->drupalPostForm('admin/structure/views/nojs/handler/test_groupwise_term_ui/default/relationship/tid_representative', $edit, 'Apply');
+  }
+
+  /**
+   * Override the error method so we can test for the expected exception.
+   *
+   * @todo Remove as part of https://www.drupal.org/node/2864613
+   */
+  protected function error($message = '', $group = 'Other', array $caller = NULL) {
+    if ($group === 'User warning') {
+      throw new \Exception($message);
+    }
+    return parent::error($message, $group, $caller);
   }
 
 }
