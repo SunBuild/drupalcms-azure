@@ -247,8 +247,8 @@ libraries-override:
         css/views_ui.admin.theme.css: css/views_ui/views_ui.admin.theme.css
         css/views_ui.contextual.css: css/views_ui/views_ui.contextual.css
 
-# Information added by Drupal.org packaging script on 2017-10-04
-version: '8.4.0'
+# Information added by Drupal.org packaging script on 2017-11-03
+version: '8.4.2'
 core: '8.x'
 project: 'drupal'
-datestamp: 1507146289
+datestamp: 1509719929
