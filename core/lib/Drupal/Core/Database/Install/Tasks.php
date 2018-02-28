@@ -26,58 +26,58 @@ abstract class Tasks {
    * Each value of the tasks array is an associative array defining the function
    * to call (optional) and any arguments to be passed to the function.
    */
-  protected $tasks = [
-    [
+  protected $tasks = array(
+    array(
       'function'    => 'checkEngineVersion',
-      'arguments'   => [],
-    ],
-    [
-      'arguments'   => [
+      'arguments'   => array(),
+    ),
+    array(
+      'arguments'   => array(
         'CREATE TABLE {drupal_install_test} (id int NULL)',
         'Drupal can use CREATE TABLE database commands.',
         'Failed to <strong>CREATE</strong> a test table on your database server with the command %query. The server reports the following message: %error.<p>Are you sure the configured username has the necessary permissions to create tables in the database?</p>',
         TRUE,
-      ],
-    ],
-    [
-      'arguments'   => [
+      ),
+    ),
+    array(
+      'arguments'   => array(
         'INSERT INTO {drupal_install_test} (id) VALUES (1)',
         'Drupal can use INSERT database commands.',
         'Failed to <strong>INSERT</strong> a value into a test table on your database server. We tried inserting a value with the command %query and the server reported the following error: %error.',
-      ],
-    ],
-    [
-      'arguments'   => [
+      ),
+    ),
+    array(
+      'arguments'   => array(
         'UPDATE {drupal_install_test} SET id = 2',
         'Drupal can use UPDATE database commands.',
         'Failed to <strong>UPDATE</strong> a value in a test table on your database server. We tried updating a value with the command %query and the server reported the following error: %error.',
-      ],
-    ],
-    [
-      'arguments'   => [
+      ),
+    ),
+    array(
+      'arguments'   => array(
         'DELETE FROM {drupal_install_test}',
         'Drupal can use DELETE database commands.',
         'Failed to <strong>DELETE</strong> a value from a test table on your database server. We tried deleting a value with the command %query and the server reported the following error: %error.',
-      ],
-    ],
-    [
-      'arguments'   => [
+      ),
+    ),
+    array(
+      'arguments'   => array(
         'DROP TABLE {drupal_install_test}',
         'Drupal can use DROP TABLE database commands.',
         'Failed to <strong>DROP</strong> a test table from your database server. We tried dropping a table with the command %query and the server reported the following error %error.',
-      ],
-    ],
-  ];
+      ),
+    ),
+  );
 
   /**
    * Results from tasks.
    *
    * @var array
    */
-  protected $results = [
-    'fail' => [],
-    'pass' => [],
-  ];
+  protected $results = array(
+    'fail' => array(),
+    'pass' => array(),
+  );
 
   /**
    * Ensure the PDO driver is supported by the version of PHP in use.
@@ -138,12 +138,12 @@ abstract class Tasks {
         }
         if (method_exists($this, $task['function'])) {
           // Returning false is fatal. No other tasks can run.
-          if (FALSE === call_user_func_array([$this, $task['function']], $task['arguments'])) {
+          if (FALSE === call_user_func_array(array($this, $task['function']), $task['arguments'])) {
             break;
           }
         }
         else {
-          $this->fail(t("Failed to run all tasks against the database server. The task %task wasn't found.", ['%task' => $task['function']]));
+          $this->fail(t("Failed to run all tasks against the database server. The task %task wasn't found.", array('%task' => $task['function'])));
         }
       }
     }
@@ -162,7 +162,7 @@ abstract class Tasks {
       $this->pass('Drupal can CONNECT to the database ok.');
     }
     catch (\Exception $e) {
-      $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist, and have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', ['%error' => $e->getMessage()]));
+      $this->fail(t('Failed to connect to your database server. The server reports the following message: %error.<ul><li>Is the database server running?</li><li>Does the database exist, and have you entered the correct database name?</li><li>Have you entered the correct username and password?</li><li>Have you entered the correct database hostname?</li></ul>', array('%error' => $e->getMessage())));
       return FALSE;
     }
     return TRUE;
@@ -177,7 +177,7 @@ abstract class Tasks {
       $this->pass(t($pass));
     }
     catch (\Exception $e) {
-      $this->fail(t($fail, ['%query' => $query, '%error' => $e->getMessage(), '%name' => $this->name()]));
+      $this->fail(t($fail, array('%query' => $query, '%error' => $e->getMessage(), '%name' => $this->name())));
       return !$fatal;
     }
   }
@@ -188,7 +188,7 @@ abstract class Tasks {
   protected function checkEngineVersion() {
     // Ensure that the database server has the right version.
     if ($this->minimumVersion() && version_compare(Database::getConnection()->version(), $this->minimumVersion(), '<')) {
-      $this->fail(t("The database server version %version is less than the minimum required version %minimum_version.", ['%version' => Database::getConnection()->version(), '%minimum_version' => $this->minimumVersion()]));
+      $this->fail(t("The database server version %version is less than the minimum required version %minimum_version.", array('%version' => Database::getConnection()->version(), '%minimum_version' => $this->minimumVersion())));
     }
   }
 
@@ -202,74 +202,99 @@ abstract class Tasks {
    *   The options form array.
    */
   public function getFormOptions(array $database) {
-    $form['database'] = [
+      
+    $connectstr_dbhost = '';
+    $connectstr_dbfullhost = '';
+    $connectstr_dbname = '';
+    $connectstr_dbusername = '';
+    $connectstr_dbpassword = '';
+    foreach ($_SERVER as $key => $value) {
+        if (strpos($key, "MYSQLCONNSTR_") !== 0) {
+            continue;
+        }
+        
+        $connectstr_dbfullhost = preg_replace("/^.*Data Source=(.+?);.*$/", "\\1", $value);
+        $connectstr_dbhost = substr($connectstr_dbfullhost, 0 , strpos($connectstr_dbfullhost ,":"));
+        $connectstr_dbname = preg_replace("/^.*Database=(.+?);.*$/", "\\1", $value);
+        $connectstr_dbusername = preg_replace("/^.*User Id=(.+?);.*$/", "\\1", $value);
+        $connectstr_dbpassword = preg_replace("/^.*Password=(.+?)$/", "\\1", $value);
+    }
+    //Port for MYSQL in-app or ClearDB 
+    $connectstr_port = getenv('WEBSITE_MYSQL_PORT');
+    if (empty($connectstr_port))
+    {
+      $connectstr_port= 3306;
+    }
+
+    $form['database'] = array(
       '#type' => 'textfield',
       '#title' => t('Database name'),
-      '#default_value' => empty($database['database']) ? '' : $database['database'],
+      '#default_value' => $connectstr_dbname,
       '#size' => 45,
       '#required' => TRUE,
-      '#states' => [
-        'required' => [
-          ':input[name=driver]' => ['value' => $this->pdoDriver],
-        ],
-      ],
-    ];
+      '#states' => array(
+        'required' => array(
+          ':input[name=driver]' => array('value' => $this->pdoDriver),
+        ),
+      ),
+    );
 
-    $form['username'] = [
+    $form['username'] = array(
       '#type' => 'textfield',
       '#title' => t('Database username'),
-      '#default_value' => empty($database['username']) ? '' : $database['username'],
+      '#default_value' => $connectstr_dbusername,
       '#size' => 45,
       '#required' => TRUE,
-      '#states' => [
-        'required' => [
-          ':input[name=driver]' => ['value' => $this->pdoDriver],
-        ],
-      ],
-    ];
+      '#states' => array(
+        'required' => array(
+          ':input[name=driver]' => array('value' => $this->pdoDriver),
+        ),
+      ),
+    );
 
-    $form['password'] = [
+    $form['password'] = array(
       '#type' => 'password',
       '#title' => t('Database password'),
-      '#default_value' => empty($database['password']) ? '' : $database['password'],
-      '#required' => FALSE,
+      '#default_value' => $connectstr_dbpassword,
+      '#attributes' => array('value' => $connectstr_dbpassword),
+      '#required' => TRUE,
       '#size' => 45,
-    ];
+    );
 
-    $form['advanced_options'] = [
+    $form['advanced_options'] = array(
       '#type' => 'details',
       '#title' => t('Advanced options'),
       '#weight' => 10,
-    ];
+    );
 
     $profile = drupal_get_profile();
     $db_prefix = ($profile == 'standard') ? 'drupal_' : $profile . '_';
-    $form['advanced_options']['prefix'] = [
+    $form['advanced_options']['prefix'] = array(
       '#type' => 'textfield',
       '#title' => t('Table name prefix'),
       '#default_value' => empty($database['prefix']) ? '' : $database['prefix'],
       '#size' => 45,
-      '#description' => t('If more than one application will be sharing this database, a unique table name prefix – such as %prefix – will prevent collisions.', ['%prefix' => $db_prefix]),
+      '#description' => t('If more than one application will be sharing this database, a unique table name prefix – such as %prefix – will prevent collisions.', array('%prefix' => $db_prefix)),
       '#weight' => 10,
-    ];
+    );
 
-    $form['advanced_options']['host'] = [
+    $form['advanced_options']['host'] = array(
       '#type' => 'textfield',
       '#title' => t('Host'),
-      '#default_value' => empty($database['host']) ? 'localhost' : $database['host'],
+      '#default_value' => $connectstr_dbhost,
       '#size' => 45,
       // Hostnames can be 255 characters long.
       '#maxlength' => 255,
       '#required' => TRUE,
-    ];
-
-    $form['advanced_options']['port'] = [
+    );
+  
+    $form['advanced_options']['port'] = array(
       '#type' => 'number',
       '#title' => t('Port number'),
-      '#default_value' => empty($database['port']) ? '' : $database['port'],
+      '#default_value' => $connectstr_port,
       '#min' => 0,
       '#max' => 65535,
-    ];
+    );
 
     return $form;
   }
@@ -287,11 +312,11 @@ abstract class Tasks {
    *   An array of driver configuration errors, keyed by form element name.
    */
   public function validateDatabaseSettings($database) {
-    $errors = [];
+    $errors = array();
 
     // Verify the table prefix.
     if (!empty($database['prefix']) && is_string($database['prefix']) && !preg_match('/^[A-Za-z0-9_.]+$/', $database['prefix'])) {
-      $errors[$database['driver'] . '][prefix'] = t('The database table prefix you have entered, %prefix, is invalid. The table prefix can only contain alphanumeric characters, periods, or underscores.', ['%prefix' => $database['prefix']]);
+      $errors[$database['driver'] . '][prefix'] = t('The database table prefix you have entered, %prefix, is invalid. The table prefix can only contain alphanumeric characters, periods, or underscores.', array('%prefix' => $database['prefix']));
     }
 
     return $errors;
