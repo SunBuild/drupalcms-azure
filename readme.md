@@ -40,7 +40,7 @@ Once the app is successfully deployed and the drupal installer has completed the
 
 ```
 
-For the trusted host patterns, you can add code as below:
+For the trusted host patterns, you can add code as below to update "\core\lib\Drupal\Core\Site\Settings.php" file:
 
 ```
         $settings['trusted_host_patterns'] = array(
