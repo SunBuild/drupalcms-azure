@@ -1,4 +1,5 @@
-.add-section {
+.new-section {
+  background-color: #f7f7f7;
   width: 100%;
   outline: 2px dashed #979797;
   padding: 1.5em 0;
@@ -7,17 +8,52 @@
   transition: visually-hidden 2s ease-out, height 2s ease-in;
 }
 
+.new-section__link,
+.new-block__link {
+  color: #787878;
+  border-bottom: none;
+  padding-left: 24px;
+  background: url(../../../misc/icons/787878/plus.svg) transparent top left / 16px 16px no-repeat;
+}
+
+.new-section__link:hover,
+.new-section__link:active,
+.new-section__link:focus,
+.new-block__link:hover,
+.new-block__link:active,
+.new-block__link:focus {
+  border-bottom-style: none;
+  color: #000;
+}
+
 .layout-section {
   margin-bottom: 1.5em;
 }
 
-.layout-section .layout-builder--layout__region {
-  outline: 2px dashed #2f91da;
-  padding: 1.5em 0;
+.layout-section .ui-sortable-helper {
+  background-color: #fff;
+  outline: 2px solid #f7f7f7;
 }
 
-.layout-section .layout-builder--layout__region .add-block {
+.layout-section .ui-state-drop {
+  background-color: #ffd;
+  outline: 2px dashed #fedb60;
+  margin: 20px;
+  padding: 30px;
+}
+
+.layout-section .layout-builder--layout__region {
+  outline: 2px dashed #2f91da;
+}
+
+.layout-section .layout-builder--layout__region .new-block {
+  background-color: #eff6fc;
+  padding: 1.5em 0;
   text-align: center;
+}
+
+.layout-section .layout-builder--layout__region .block {
+  padding: 1.5em;
 }
 
 .layout-section .remove-section {

@@ -15,6 +15,7 @@ use Drupal\Core\TypedData\OptionsProviderInterface;
 class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionInterface, FieldStorageDefinitionInterface, RequiredFieldStorageDefinitionInterface {
 
   use UnchangingCacheableDependencyTrait;
+  use FieldInputValueNormalizerTrait;
 
   /**
    * The field type.
@@ -232,7 +233,9 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
    * {@inheritdoc}
    */
   public function isRevisionable() {
-    return !empty($this->definition['revisionable']);
+    // Multi-valued base fields are always considered revisionable, just like
+    // configurable fields.
+    return !empty($this->definition['revisionable']) || $this->isMultiple();
   }
 
   /**
@@ -262,6 +265,10 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
    *
    * Possible values are positive integers or
    * FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED.
+   *
+   * Note that if the entity type that this base field is attached to is
+   * revisionable and the field has a cardinality higher than 1, the field is
+   * considered revisionable by default.
    *
    * @param int $cardinality
    *   The field cardinality.
@@ -464,14 +471,7 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
     else {
       $value = $this->getDefaultValueLiteral();
     }
-    // Normalize into the "array keyed by delta" format.
-    if (isset($value) && !is_array($value)) {
-      $properties = $this->getPropertyNames();
-      $property = reset($properties);
-      $value = [
-        [$property => $value],
-      ];
-    }
+    $value = $this->normalizeValue($value, $this->getMainPropertyName());
     // Allow the field type to process default values.
     $field_item_list_class = $this->getClass();
     return $field_item_list_class::processDefaultValue($value, $entity, $this);
@@ -516,16 +516,7 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
    *   each item being a property/value array (array() for no default value).
    */
   public function getInitialValue() {
-    $value = isset($this->definition['initial_value']) ? $this->definition['initial_value'] : [];
-
-    // Normalize into the "array keyed by delta" format.
-    if (isset($value) && !is_array($value)) {
-      $value = [
-        [$this->getMainPropertyName() => $value],
-      ];
-    }
-
-    return $value;
+    return $this->normalizeValue($this->definition['initial_value'], $this->getMainPropertyName());
   }
 
   /**
@@ -550,20 +541,7 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
       throw new FieldException('Multi-value fields can not have an initial value.');
     }
 
-    if ($value === NULL) {
-      $value = [];
-    }
-    // Unless the value is an empty array, we may need to transform it.
-    if (!is_array($value) || !empty($value)) {
-      if (!is_array($value)) {
-        $value = [[$this->getMainPropertyName() => $value]];
-      }
-      elseif (is_array($value) && !is_numeric(array_keys($value)[0])) {
-        $value = [0 => $value];
-      }
-    }
-    $this->definition['initial_value'] = $value;
-
+    $this->definition['initial_value'] = $this->normalizeValue($value, $this->getMainPropertyName());
     return $this;
   }
 
@@ -582,12 +560,24 @@ class BaseFieldDefinition extends ListDataDefinition implements FieldDefinitionI
    *
    * @param string $field_name
    *   The name of the field that will be used for getting initial values.
+   * @param mixed $default_value
+   *   (optional) The default value for the field, in case the inherited value
+   *   is NULL. This can be either:
+   *   - a literal, in which case it will be assigned to the first property of
+   *     the first item;
+   *   - a numerically indexed array of items, each item being a property/value
+   *     array;
+   *   - a non-numerically indexed array, in which case the array is assumed to
+   *     be a property/value array and used as the first item;
+   *   - an empty array for no initial value.
+   *   If the field being added is required or an entity key, it is recommended
+   *   to provide a default value.
    *
    * @return $this
    */
-  public function setInitialValueFromField($field_name) {
+  public function setInitialValueFromField($field_name, $default_value = NULL) {
     $this->definition['initial_value_from_field'] = $field_name;
-
+    $this->setInitialValue($default_value);
     return $this;
   }
 

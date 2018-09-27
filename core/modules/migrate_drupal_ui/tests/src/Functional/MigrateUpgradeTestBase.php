@@ -98,28 +98,6 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
   }
 
   /**
-   * Transforms a nested array into a flat array suitable for BrowserTestBase::drupalPostForm().
-   *
-   * @param array $values
-   *   A multi-dimensional form values array to convert.
-   *
-   * @return array
-   *   The flattened $edit array suitable for BrowserTestBase::drupalPostForm().
-   */
-  protected function translatePostValues(array $values) {
-    $edit = [];
-    // The easiest and most straightforward way to translate values suitable for
-    // BrowserTestBase::drupalPostForm() is to actually build the POST data string
-    // and convert the resulting key/value pairs back into a flat array.
-    $query = http_build_query($values);
-    foreach (explode('&', $query) as $item) {
-      list($key, $value) = explode('=', $item);
-      $edit[urldecode($key)] = urldecode($value);
-    }
-    return $edit;
-  }
-
-  /**
    * Tests the displayed upgrade paths.
    *
    * @param \Drupal\Tests\WebAssert $session
@@ -231,11 +209,11 @@ abstract class MigrateUpgradeTestBase extends BrowserTestBase {
   protected function assertIdConflict(WebAssert $session) {
     $session->pageTextContains('WARNING: Content may be overwritten on your new site.');
     $session->pageTextContains('There is conflicting content of these types:');
-    $session->pageTextContains('custom block entities');
-    $session->pageTextContains('custom menu link entities');
-    $session->pageTextContains('file entities');
-    $session->pageTextContains('taxonomy term entities');
-    $session->pageTextContains('user entities');
+    $session->pageTextContains('custom blocks');
+    $session->pageTextContains('custom menu links');
+    $session->pageTextContains('files');
+    $session->pageTextContains('taxonomy terms');
+    $session->pageTextContains('users');
     $session->pageTextContains('comments');
     $session->pageTextContains('content item revisions');
     $session->pageTextContains('content items');

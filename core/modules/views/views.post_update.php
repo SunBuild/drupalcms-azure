@@ -5,6 +5,7 @@
  * Post update functions for Views.
  */
 
+use Drupal\Core\Config\Entity\ConfigEntityUpdater;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\views\Entity\View;
 use Drupal\views\Plugin\views\filter\NumericFilter;
@@ -206,6 +207,8 @@ function views_post_update_grouped_filters() {
 
 /**
  * Fix table names for revision metadata fields.
+ *
+ * @see https://www.drupal.org/node/2831499
  */
 function views_post_update_revision_metadata_fields() {
   // The table names are fixed automatically in
@@ -352,23 +355,14 @@ function views_post_update_views_data_table_dependencies(&$sandbox = NULL) {
  * Fix cache max age for table displays.
  */
 function views_post_update_table_display_cache_max_age(&$sandbox = NULL) {
-  $storage = \Drupal::entityTypeManager()->getStorage('view');
-  if (!isset($sandbox['views'])) {
-    $sandbox['views'] = $storage->getQuery()->accessCheck(FALSE)->execute();
-    $sandbox['count'] = count($sandbox['views']);
-  }
-
-  for ($i = 0; $i < 10 && count($sandbox['views']); $i++) {
-    $view_id = array_shift($sandbox['views']);
-    if ($view = $storage->load($view_id)) {
-      $displays = $view->get('display');
-      foreach ($displays as $display_name => &$display) {
-        if (isset($display['display_options']['style']['type']) && $display['display_options']['style']['type'] === 'table') {
-          $view->save();
-        }
+  \Drupal::classResolver(ConfigEntityUpdater::class)->update($sandbox, 'view', function ($view) {
+    /** @var \Drupal\views\ViewEntityInterface $view */
+    $displays = $view->get('display');
+    foreach ($displays as $display_name => &$display) {
+      if (isset($display['display_options']['style']['type']) && $display['display_options']['style']['type'] === 'table') {
+        return TRUE;
       }
     }
-  }
-
-  $sandbox['#finished'] = empty($sandbox['views']) ? 1 : ($sandbox['count'] - count($sandbox['views'])) / $sandbox['count'];
+    return FALSE;
+  });
 }

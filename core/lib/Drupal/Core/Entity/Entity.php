@@ -5,7 +5,6 @@ namespace Drupal\Core\Entity;
 use Drupal\Core\Cache\Cache;
 use Drupal\Core\Cache\RefinableCacheableDependencyTrait;
 use Drupal\Core\DependencyInjection\DependencySerializationTrait;
-use Drupal\Component\Utility\Unicode;
 use Drupal\Core\Config\Entity\Exception\ConfigEntityIdLengthException;
 use Drupal\Core\Entity\Exception\UndefinedLinkTemplateException;
 use Drupal\Core\Language\Language;
@@ -13,6 +12,7 @@ use Drupal\Core\Language\LanguageInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Url;
+use Symfony\Component\Routing\Exception\MissingMandatoryParametersException;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 
 /**
@@ -344,6 +344,9 @@ abstract class Entity implements EntityInterface {
       catch (RouteNotFoundException $e) {
         return FALSE;
       }
+      catch (MissingMandatoryParametersException $e) {
+        return FALSE;
+      }
       return TRUE;
     });
   }
@@ -427,7 +430,7 @@ abstract class Entity implements EntityInterface {
     // Check if this is an entity bundle.
     if ($this->getEntityType()->getBundleOf()) {
       // Throw an exception if the bundle ID is longer than 32 characters.
-      if (Unicode::strlen($this->id()) > EntityTypeInterface::BUNDLE_MAX_LENGTH) {
+      if (mb_strlen($this->id()) > EntityTypeInterface::BUNDLE_MAX_LENGTH) {
         throw new ConfigEntityIdLengthException("Attempt to create a bundle with an ID longer than " . EntityTypeInterface::BUNDLE_MAX_LENGTH . " characters: $this->id().");
       }
     }

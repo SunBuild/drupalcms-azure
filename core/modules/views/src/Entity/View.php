@@ -19,6 +19,14 @@ use Drupal\views\ViewEntityInterface;
  * @ConfigEntityType(
  *   id = "view",
  *   label = @Translation("View", context = "View entity type"),
+ *   label_collection = @Translation("Views", context = "View entity type"),
+ *   label_singular = @Translation("view", context = "View entity type"),
+ *   label_plural = @Translation("views", context = "View entity type"),
+ *   label_count = @PluralTranslation(
+ *     singular = "@count view",
+ *     plural = "@count views",
+ *     context = "View entity type",
+ *   ),
  *   admin_permission = "administer views",
  *   entity_keys = {
  *     "id" = "id",
@@ -317,6 +325,8 @@ class View extends ConfigEntityBase implements ViewEntityInterface {
    *   An array containing display handlers of a view.
    *
    * @deprecated in Drupal 8.3.0, will be removed in Drupal 9.0.0.
+   *
+   * @see https://www.drupal.org/node/2831499
    */
   private function fixTableNames(array &$displays) {
     // Fix wrong table names for entity revision metadata fields.
@@ -421,7 +431,7 @@ class View extends ConfigEntityBase implements ViewEntityInterface {
           'position' => 0,
           'display_options' => [],
         ],
-      ]
+      ],
     ];
   }
 
