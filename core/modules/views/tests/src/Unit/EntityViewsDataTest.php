@@ -176,7 +176,7 @@ class EntityViewsDataTest extends UnitTestCase {
       ->setSetting('max_length', 255);
 
     // A base field with cardinality > 1
-    $base_fields['string']  = BaseFieldDefinition::create('string')
+    $base_fields['string'] = BaseFieldDefinition::create('string')
       ->setLabel('Strong')
       ->setTranslatable(TRUE)
       ->setCardinality(2);
@@ -457,7 +457,7 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
     $this->entityManager->expects($this->any())
       ->method('getBaseFieldDefinitions')
@@ -578,7 +578,7 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
     $entity_test_type = new ConfigEntityType(['id' => 'entity_test_bundle']);
 
@@ -730,7 +730,7 @@ class EntityViewsDataTest extends UnitTestCase {
         ->setLabel('ID')
         ->setDescription('The ID of the user entity.')
         ->setReadOnly(TRUE)
-        ->setSetting('unsigned', TRUE)
+        ->setSetting('unsigned', TRUE),
     ];
     $this->entityManager->expects($this->any())
       ->method('getBaseFieldDefinitions')
@@ -933,9 +933,11 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->baseEntityType->setLinkTemplate('delete-form', '/entity_test/{entity_test}/delete');
 
     $data = $this->viewsData->getViewsData();
-    $this->assertEquals('entity_link', $data['entity_test']['view_entity_test']['field']['id']);
-    $this->assertEquals('entity_link_edit', $data['entity_test']['edit_entity_test']['field']['id']);
-    $this->assertEquals('entity_link_delete', $data['entity_test']['delete_entity_test']['field']['id']);
+    foreach (['entity_test', 'entity_test_revision'] as $table_name) {
+      $this->assertEquals('entity_link', $data[$table_name]['view_entity_test']['field']['id']);
+      $this->assertEquals('entity_link_edit', $data[$table_name]['edit_entity_test']['field']['id']);
+      $this->assertEquals('entity_link_delete', $data[$table_name]['delete_entity_test']['field']['id']);
+    }
   }
 
   /**
@@ -945,10 +947,13 @@ class EntityViewsDataTest extends UnitTestCase {
     $this->baseEntityType->setLinkTemplate('edit-form', '/entity_test/{entity_test}/edit');
 
     $data = $this->viewsData->getViewsData();
-    $this->assertFalse(isset($data['entity_test']['view_entity_test']));
-    $this->assertFalse(isset($data['entity_test']['delete_entity_test']));
 
-    $this->assertEquals('entity_link_edit', $data['entity_test']['edit_entity_test']['field']['id']);
+    foreach (['entity_test', 'entity_test_revision'] as $table_name) {
+      $this->assertFalse(isset($data[$table_name]['view_entity_test']));
+      $this->assertFalse(isset($data[$table_name]['delete_entity_test']));
+
+      $this->assertEquals('entity_link_edit', $data[$table_name]['edit_entity_test']['field']['id']);
+    }
   }
 
   /**
@@ -1129,16 +1134,20 @@ class TestEntityType extends ContentEntityType {
 namespace Drupal\entity_test\Entity;
 
 if (!function_exists('t')) {
+
   function t($string, array $args = []) {
     return strtr($string, $args);
   }
+
 }
 
 
 namespace Drupal\Core\Entity;
 
 if (!function_exists('t')) {
+
   function t($string, array $args = []) {
     return strtr($string, $args);
   }
+
 }

@@ -88,7 +88,7 @@ class ModerationStateFieldItemList extends FieldItemList {
     $moderation_info = \Drupal::service('content_moderation.moderation_information');
     $content_moderation_storage = \Drupal::entityTypeManager()->getStorage('content_moderation_state');
 
-    $revisions = \Drupal::service('entity.query')->get('content_moderation_state')
+    $revisions = $content_moderation_storage->getQuery()
       ->condition('content_entity_type_id', $entity->getEntityTypeId())
       ->condition('content_entity_id', $entity->id())
       // Ensure the correct revision is loaded in scenarios where a revision is
@@ -141,11 +141,13 @@ class ModerationStateFieldItemList extends FieldItemList {
   public function setValue($values, $notify = TRUE) {
     parent::setValue($values, $notify);
 
+    if (isset($this->list[0])) {
+      $this->valueComputed = TRUE;
+    }
     // If the parent created a field item and if the parent should be notified
     // about the change (e.g. this is not initialized with the current value),
     // update the moderated entity.
     if (isset($this->list[0]) && $notify) {
-      $this->valueComputed = TRUE;
       $this->updateModeratedEntity($this->list[0]->value);
     }
   }

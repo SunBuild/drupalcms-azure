@@ -2,7 +2,6 @@
 
 namespace Drupal\Tests\migrate_drupal_ui\Functional;
 
-use Drupal\migrate_drupal\MigrationConfigurationTrait;
 use Drupal\Tests\migrate_drupal\Traits\CreateTestContentEntitiesTrait;
 
 /**
@@ -10,25 +9,19 @@ use Drupal\Tests\migrate_drupal\Traits\CreateTestContentEntitiesTrait;
  */
 abstract class MigrateUpgradeReviewPageTestBase extends MigrateUpgradeTestBase {
 
-  use MigrationConfigurationTrait;
   use CreateTestContentEntitiesTrait;
+
+  /**
+   * An array suitable for drupalPostForm().
+   *
+   * @var array
+   */
+  protected $edits = [];
 
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
-    'language',
-    'content_translation',
-    'migrate_drupal_ui',
-    'telephone',
-    'aggregator',
-    'book',
-    'forum',
-    'statistics',
-    'syslog',
-    'tracker',
-    'update',
-  ];
+  public static $modules = ['migrate_drupal_ui'];
 
   /**
    * Tests the migrate upgrade review form.
@@ -53,6 +46,56 @@ abstract class MigrateUpgradeReviewPageTestBase extends MigrateUpgradeTestBase {
    * @see \Drupal\Tests\migrate_drupal_ui\Functional\MigrateUpgradeExecuteTestBase
    */
   public function testMigrateUpgradeReviewPage() {
+    $this->prepare();
+    // Start the upgrade process.
+    $this->drupalGet('/upgrade');
+    $this->drupalPostForm(NULL, [], t('Continue'));
+    $this->drupalPostForm(NULL, $this->edits, t('Review upgrade'));
+    $this->drupalPostForm(NULL, [], t('I acknowledge I may lose data. Continue anyway.'));
+
+    // Ensure there are no errors about missing modules from the test module.
+    $session = $this->assertSession();
+    $session->pageTextNotContains(t('Source module not found for migration_provider_no_annotation.'));
+    $session->pageTextNotContains(t('Source module not found for migration_provider_test.'));
+    $session->pageTextNotContains(t('Destination module not found for migration_provider_test'));
+    // Ensure there are no errors about any other missing migration providers.
+    $session->pageTextNotContains(t('module not found'));
+
+    // Test the upgrade paths.
+    $available_paths = $this->getAvailablePaths();
+    $missing_paths = $this->getMissingPaths();
+    $this->assertUpgradePaths($session, $available_paths, $missing_paths);
+
+    // Check there are no errors when a module in noUpgradePaths is not in the
+    // source system tables. Test with a module that is listed in noUpgradePaths
+    // for both Drupal 6 and Drupal 7.
+    // @see \Drupal\migrate_drupal_ui\Form\ReviewForm::$noUpgradePaths
+    $module = 'help';
+    $query = $this->sourceDatabase->delete('system');
+    $query->condition('type', 'module');
+    $query->condition('name', $module);
+    $query->execute();
+
+    // Start the upgrade process.
+    $this->drupalGet('/upgrade');
+    $this->drupalPostForm(NULL, [], t('Continue'));
+    $this->drupalPostForm(NULL, $this->edits, t('Review upgrade'));
+    $this->drupalPostForm(NULL, [], t('I acknowledge I may lose data. Continue anyway.'));
+
+    // Test the upgrade paths.
+    $available_paths = $this->getAvailablePaths();
+    $available_paths = array_diff($available_paths, [$module]);
+    $missing_paths = $this->getMissingPaths();
+    $this->assertUpgradePaths($session, $available_paths, $missing_paths);
+  }
+
+  /**
+   * Performs preparation for the form tests.
+   *
+   * This is not done in setup because setup executes before the source database
+   * is loaded.
+   */
+  public function prepare() {
     $connection_options = $this->sourceDatabase->getConnectionOptions();
     $driver = $connection_options['driver'];
     $connection_options['prefix'] = $connection_options['prefix']['default'];
@@ -77,7 +120,7 @@ abstract class MigrateUpgradeReviewPageTestBase extends MigrateUpgradeTestBase {
     if (count($drivers) !== 1) {
       $edit['driver'] = $driver;
     }
-    $edits = $this->translatePostValues($edit);
+    $this->edits = $this->translatePostValues($edit);
 
     // Enable all modules in the source except test and example modules, but
     // include simpletest.
@@ -93,25 +136,6 @@ abstract class MigrateUpgradeReviewPageTestBase extends MigrateUpgradeTestBase {
     $conditions->condition('name', 'simpletest');
     $update->condition($conditions);
     $update->execute();
-
-    // Start the upgrade process.
-    $this->drupalGet('/upgrade');
-    $this->drupalPostForm(NULL, [], t('Continue'));
-    $this->drupalPostForm(NULL, $edits, t('Review upgrade'));
-    $this->drupalPostForm(NULL, [], t('I acknowledge I may lose data. Continue anyway.'));
-
-    // Ensure there are no errors about missing modules from the test module.
-    $session = $this->assertSession();
-    $session->pageTextNotContains(t('Source module not found for migration_provider_no_annotation.'));
-    $session->pageTextNotContains(t('Source module not found for migration_provider_test.'));
-    $session->pageTextNotContains(t('Destination module not found for migration_provider_test'));
-    // Ensure there are no errors about any other missing migration providers.
-    $session->pageTextNotContains(t('module not found'));
-
-    // Test the upgrade paths.
-    $available_paths = $this->getAvailablePaths();
-    $missing_paths = $this->getMissingPaths();
-    $this->assertUpgradePaths($session, $available_paths, $missing_paths);
   }
 
   /**

@@ -2,14 +2,14 @@ name: 'Requirements 2 Test'
 type: module
 description: 'Tests that a module is not installed when the one it depends on fails hook_requirements(''install).'
 dependencies:
-  - requirements1_test
-  - comment
+  - drupal:requirements1_test
+  - drupal:comment
 package: Testing
 # version: VERSION
 # core: 8.x
 
-# Information added by Drupal.org packaging script on 2018-03-28
-version: '8.5.1'
+# Information added by Drupal.org packaging script on 2018-09-10
+version: '8.6.1'
 core: '8.x'
 project: 'drupal'
-datestamp: 1522264150
+datestamp: 1536585833
