@@ -12,8 +12,8 @@ dependencies:
   # @todo Discuss removing in https://www.drupal.org/project/drupal/issues/3003610.
   - drupal:block
 
-# Information added by Drupal.org packaging script on 2019-04-08
-version: '8.6.14'
+# Information added by Drupal.org packaging script on 2019-04-17
+version: '8.6.15'
 core: '8.x'
 project: 'drupal'
-datestamp: 1554688420
+datestamp: 1555533461
