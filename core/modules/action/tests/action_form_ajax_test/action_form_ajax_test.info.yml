@@ -6,8 +6,8 @@ package: Core
 # core: 8.x
 hidden: true
 
-# Information added by Drupal.org packaging script on 2019-04-17
-version: '8.6.15'
+# Information added by Drupal.org packaging script on 2019-05-08
+version: '8.7.1'
 core: '8.x'
 project: 'drupal'
-datestamp: 1555533461
+datestamp: 1557336198
